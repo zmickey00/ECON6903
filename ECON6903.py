@@ -6,14 +6,14 @@ from numpy.linalg import solve
 # Step 0. Import Data Files
 # -------------------------------
 # Adjust file paths if your files are in a subfolder (e.g., 'data/')
-alpha         = pd.read_csv(r'C:\Users\13424\PycharmProjects\ECON6903\data\alpha.csv')         # Expected columns: 'Country', 'Sector', 'alpha'
-countries_df  = pd.read_csv(r'C:\Users\13424\PycharmProjects\ECON6903\data\CountryNames.csv')    # Expected columns: 'Country' (or similar)
-deficits      = pd.read_csv(r'C:\Users\13424\PycharmProjects\ECON6903\data\Deficits.csv')        # Expected columns: 'Country', 'Deficit'
-gamma_io      = pd.read_csv(r'C:\Users\13424\PycharmProjects\ECON6903\data\gamma_IO.csv')        # Expected columns: 'Country', 'FromSector', 'ToSector', 'gamma'
-gamma_va      = pd.read_csv(r'C:\Users\13424\PycharmProjects\ECON6903\data\gamma_VA.csv')        # Expected columns: 'Country', 'Sector', 'gamma_VA'
-one_plus_tau  = pd.read_csv(r'C:\Users\13424\PycharmProjects\ECON6903\data\one_plus_tau.csv')    # Expected columns: 'Origin', 'Destination', 'Sector', 'one_plus_tau'
-pi_df         = pd.read_csv(r'C:\Users\13424\PycharmProjects\ECON6903\data\pi.csv')              # Expected columns: 'Origin', 'Destination', 'Sector', 'pi'
-va_world      = pd.read_csv(r'C:\Users\13424\PycharmProjects\ECON6903\data\VA_World.csv')        # Expected column: 'VA_World'
+alpha         = pd.read_csv('data/alpha.csv')         # Expected columns: 'Country', 'Sector', 'alpha'
+countries_df  = pd.read_csv('data/CountryNames.csv')    # Expected columns: 'Country' (or similar)
+deficits      = pd.read_csv('data/Deficits.csv')        # Expected columns: 'Country', 'Deficit'
+gamma_io      = pd.read_csv('data/gamma_IO.csv')        # Expected columns: 'Country', 'FromSector', 'ToSector', 'gamma'
+gamma_va      = pd.read_csv('data/gamma_VA.csv')        # Expected columns: 'Country', 'Sector', 'gamma_VA'
+one_plus_tau  = pd.read_csv('data/one_plus_tau.csv')    # Expected columns: 'Origin', 'Destination', 'Sector', 'one_plus_tau'
+pi_df         = pd.read_csv('data/pi.csv')              # Expected columns: 'Origin', 'Destination', 'Sector', 'pi'
+va_world      = pd.read_csv('data/VA_World.csv')        # Expected column: 'VA_World'
 
 # -------------------------------
 # Step 1. Data Preprocessing
