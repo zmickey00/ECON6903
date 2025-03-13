@@ -1,3 +1,5 @@
+from cgitb import reset
+
 import pandas as pd
 import numpy as np
 from numpy.linalg import solve
@@ -5,166 +7,85 @@ from numpy.linalg import solve
 # -------------------------------
 # Step 0. Import Data Files
 # -------------------------------
-alpha_df = pd.read_csv(r'C:\Users\13424\PycharmProjects\ECON6903\data\alpha.csv')
-countries_df = pd.read_csv(r'C:\Users\13424\PycharmProjects\ECON6903\data\CountryNames.csv')
-deficits_df = pd.read_csv(r'C:\Users\13424\PycharmProjects\ECON6903\data\Deficits.csv')
-gamma_io_df = pd.read_csv(r'C:\Users\13424\PycharmProjects\ECON6903\data\gamma_IO.csv')
-gamma_va_df = pd.read_csv(r'C:\Users\13424\PycharmProjects\ECON6903\data\gamma_VA.csv')
-one_plus_tau_df = pd.read_csv(r'C:\Users\13424\PycharmProjects\ECON6903\data\one_plus_tau.csv')
-pi_df = pd.read_csv(r'C:\Users\13424\PycharmProjects\ECON6903\data\pi.csv')
-va_world_df = pd.read_csv(r'C:\Users\13424\PycharmProjects\ECON6903\data\VA_World.csv')
+# Adjust file paths if your files are in a subfolder (e.g., 'data/')
+alpha         = pd.read_csv('data/alpha.csv')         # Expected columns: 'Country', 'Sector', 'alpha'
+countries_df  = pd.read_csv('data/CountryNames.csv')    # Expected columns: 'Country' (or similar)
+deficits      = pd.read_csv('data/Deficits.csv')        # Expected columns: 'Country', 'Deficit'
+gamma_io      = pd.read_csv('data/gamma_IO.csv')        # Expected columns: 'Country', 'FromSector', 'ToSector', 'gamma'
+gamma_va      = pd.read_csv('data/gamma_VA.csv')        # Expected columns: 'Country', 'Sector', 'gamma_VA'
+one_plus_tau  = pd.read_csv('data/one_plus_tau.csv')    # Expected columns: 'Origin', 'Destination', 'Sector', 'one_plus_tau'
+pi_df         = pd.read_csv('data/pi.csv')              # Expected columns: 'Origin', 'Destination', 'Sector', 'pi'
+va_world      = pd.read_csv('data/VA_World.csv')
 
-# -------------------------------
-# Step 1. Data Preprocessing
-# -------------------------------
-# Extract world value added (assumes header "VA_World")
-world_va = va_world_df['VA_World'].iloc[0]
-print("World Value Added =", world_va)
+J = 40
+N = 31
 
-# Normalize deficits (divide by world value added)
-deficits_df['Deficits'] = deficits_df['Deficits'] / world_va
-
-# Build lists of countries and sectors.
-countries = countries_df['Country'].tolist()
-sectors = sorted(alpha_df['sector'].unique().tolist())
-
-N = len(countries)  # Number of countries
-J = len(sectors)  # Number of sectors
-size = N * J  # Total number of unknowns
+"""read data"""
 
 
-# Helper: map (country index, sector index) to vector index.
-def idx(n, j):
-    return n * J + j
+def one_plus_tao(sector, destination, origin):
+    result =one_plus_tau[(one_plus_tau['sector'] == sector) & (one_plus_tau['CountryDestination'] == destination) & (one_plus_tau['CountryOrigin'] == origin)]['one_plus_tau'].iloc[0]
+    return result
+
+def read_alpha(sector, country):
+    result = alpha[(alpha['sector'] == sector) & (alpha['country'] == country)]['alpha'].iloc[0]
+    return result
+def read_pi(sector, destination, origin):
+    result = pi_df[(pi_df['sector'] == sector) & (pi_df['CountryDestination'] == destination) & (pi_df['CountryOrigin'] == origin)] ['pi'].iloc[0]
+    return result
+def read_gama_1(sorigin, sdestination, country):
+    result = gamma_io[(gamma_io['SectorOrigin'] == sorigin) & (gamma_io['SectorDestination'] == sdestination) & (gamma_io['country'] == country)] ['gamma_IO'].iloc[0]
+    return result
+def read_gama_2(sector, country):
+    result = gamma_va[(gamma_va['sector'] == sector) & (gamma_va['country'] == country)] ['gamma_VA'].iloc[0]
+    return result
 
 
-# -------------------------------
-# Step 2. Precompute Dictionaries for Fast Lookups
-# -------------------------------
-# alpha: key = (country, sector)
-alpha_dict = {(row['country'], row['sector']): row['alpha']
-              for _, row in alpha_df.iterrows()}
-
-# deficits: key = country
-deficit_dict = {row['country']: row['Deficits']
-                for _, row in deficits_df.iterrows()}
-
-# gamma_IO: key = (country, SectorOrigin, SectorDestination)
-gamma_io_dict = {(row['country'], row['SectorOrigin'], row['SectorDestination']): row['gamma_IO']
-                 for _, row in gamma_io_df.iterrows()}
-
-# gamma_VA: key = (country, sector)
-gamma_va_dict = {(row['country'], row['sector']): row['gamma_VA']
-                 for _, row in gamma_va_df.iterrows()}
-
-# one_plus_tau: key = (CountryOrigin, CountryDestination, sector)
-one_plus_tau_dict = {(row['CountryOrigin'], row['CountryDestination'], row['sector']): row['one_plus_tau']
-                     for _, row in one_plus_tau_df.iterrows()}
-
-# For trade contributions, pi: key = (Origin, Destination, Sector)
-pi_dict = {(row['CountryOrigin'], row['CountryDestination'], row['sector']): row['pi']
-           for _, row in pi_df.iterrows()}
-# For tariff revenue, we assume the same keys but using columns "CountryOrigin", etc.
-pi_tariff_dict = {(row['CountryOrigin'], row['CountryDestination'], row['sector']): row['pi']
-                  for _, row in pi_df.iterrows() if 'CountryOrigin' in row}
-
-# -------------------------------
-# Step 3. Construct the Linear System A x = b
-# -------------------------------
-A = np.zeros((size, size))
-b = np.zeros(size)
-
-# Loop over each country and sector combination.
-for n, country in enumerate(countries):
-    for j, sector_j in enumerate(sectors):
-        eq_idx = idx(n, j)
-        # Identity term for X^n_j
-        A[eq_idx, eq_idx] = 1.0
-
-        # --- (i) Trade contributions using gamma_IO
-        for k, sector_k in enumerate(sectors):
-            key_gamma = (country, sector_j, sector_k)
-            if key_gamma not in gamma_io_dict:
-                continue
-            gamma_val = gamma_io_dict[key_gamma]
-            for i, country_i in enumerate(countries):
-                key_tau = (country_i, country, sector_k)
-                key_pi = (country_i, country, sector_k)
-                if key_tau in one_plus_tau_dict and key_pi in pi_dict:
-                    tau_val = one_plus_tau_dict[key_tau]
-                    pi_val = pi_dict[key_pi]
-                    coeff = gamma_val * (pi_val / tau_val)
-                    A[eq_idx, idx(i, k)] -= coeff
-
-        # --- (ii) Preference and labor share contributions
-        alpha_val = alpha_dict.get((country, sector_j), 0.0)
-        # (a) Contribution from gamma_VA (labor share)
-        for j_prime, sector_jprime in enumerate(sectors):
-            gamma_va_val = gamma_va_dict.get((country, sector_jprime), 0.0)
-            for i, country_i in enumerate(countries):
-                key_tau = (country, country_i, sector_jprime)
-                key_pi = (country, country_i, sector_jprime)
-                if key_tau in one_plus_tau_dict and key_pi in pi_dict:
-                    tau_val = one_plus_tau_dict[key_tau]
-                    pi_val = pi_dict[key_pi]
-                    coeff = alpha_val * gamma_va_val * (pi_val / tau_val)
-                    A[eq_idx, idx(i, j_prime)] -= coeff
-
-        # (b) Tariff revenue contribution (R_n)
-        for j_prime, sector_jprime in enumerate(sectors):
-            inner_sum = 0.0
-            for i, country_i in enumerate(countries):
-                key_tau = (country, country_i, sector_jprime)
-                key_pi = (country, country_i, sector_jprime)
-                if key_tau in one_plus_tau_dict and key_pi in pi_tariff_dict:
-                    base_tau = one_plus_tau_dict[key_tau]
-                    # Tariff rate τ = one_plus_tau - 1.
-                    tau_val = base_tau - 1.0
-                    pi_val = pi_tariff_dict[key_pi]
-                    inner_sum += (tau_val * pi_val) / base_tau
-            coeff = alpha_val * inner_sum
-            # This revenue contribution only affects the domestic sector (n, j_prime)
-            A[eq_idx, idx(n, j_prime)] -= coeff
-
-        # --- (iii) Set right-hand side from deficits.
-        deficit_val = deficit_dict.get(country, 0.0)
-        b[eq_idx] = alpha_val * deficit_val
-
-# -------------------------------
-# Step 4. Impose Normalization Condition
-# -------------------------------
-# Replace the last equation with: ∑ₙ (w_n L_n) = 1, approximated by summing gamma_VA.
-norm_row = size - 1
-A[norm_row, :] = 0  # Clear last row
-for n, country in enumerate(countries):
-    for j, sector in enumerate(sectors):
-        gamma_va_val = gamma_va_dict.get((country, sector), 0.0)
-        A[norm_row, idx(n, j)] = gamma_va_val
-b[norm_row] = 1.0
-
-# -------------------------------
-# Step 5. Solve the System and Output the Result
-# -------------------------------
-# X_solution = solve(A, b)
-# X_matrix = X_solution.reshape(N, J)
-# solution_df = pd.DataFrame(X_matrix, index=countries, columns=sectors)
-# rank = np.linalg.matrix_rank(A)
-# print("Matrix rank:", rank, " vs. size:", size)
-
-# print("Equilibrium Expenditures X^n_j:")
-# print(solution_df)
+def read_d(country):
+    result = deficits[(deficits['country'] == country)]['Deficits'].iloc[0]
+    return result
+# print(one_plus_tao(1,2,3))
+# print(read_alpha(6,1))
+# print(read_pi(1,1,3))
+# print(read_gama_1(2,35,1))
+# print(read_gama_2(2,1))
+# print(read_d(5))
 
 
+def sum_last(j, n, k):
+    total = 0
+    # index is the l in the format
+    for index in range(1, N):
+        total += (read_alpha(j, n) * (one_plus_tao(k,n,index) - 1) * read_pi(k, n, index)) / (one_plus_tao(k, n, index))
+    return total
 
+def big_i(a, b):
+    if a == b:
+        return 1
+    return 0
 
-# Step 5: Drop one redundant equation
-drop_row = size - 1  # Drop the last equation (market clearing)
-A_reduced = np.delete(A, drop_row, axis=0)
-b_reduced = np.delete(b, drop_row, axis=0)
-# Solve the reduced system
-X_solution = solve(A_reduced, b_reduced)
-X_matrix = X_solution.reshape(N, J)
-solution_df = pd.DataFrame(X_matrix, index=countries, columns=sectors)
-print("Matrix rank:", np.linalg.matrix_rank(A_reduced), "vs. size:", A_reduced.shape[0])
-print("Equilibrium Expenditures X^n_j:")
-print(solution_df)
+def item_3(n, i, j, k):
+    return big_i(n, i) * sum_last(j, n, k)
+
+def item_2(n, i, j, k):
+    return (read_pi(k,i,n)/one_plus_tao(k,i,n)) * (read_gama_1(j,k,n) + read_alpha(j,n) * read_gama_2(k,n))
+
+def item_1(n, i, j, k):
+    return big_i( (j-1) * N + n  ,  (k-1) * N + i )
+
+def m_entry(n,i,j,k):
+    return item_1(n,i,j,k) - item_2(n,i,j,k) - item_3(n,i,j,k)
+
+M = np.zeros((1240, 1240))
+
+def fill_m():
+    for j in range(0, J):
+        for n in range(0, N):
+            for k in range(0, J):
+                for i in range(0, N):
+                    m_row = (j - 1) * N + n
+                    m_col = (k - 1) * N + i
+                    M[m_row][m_col] = m_entry(n+1,i+1,j+1,k+1)
+    return M
+
+fill_m()

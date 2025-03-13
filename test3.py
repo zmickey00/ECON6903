@@ -1,4 +1,3 @@
-from cgitb import reset
 import pandas as pd
 import numpy as np
 from numpy.linalg import solve
@@ -68,9 +67,79 @@ def read_gama_2(sector, country):
 def read_d(country):
     return deficits_dict[country]
 
-print(one_plus_tao(40,31,31))
-print(read_alpha(6,1))
-print(read_pi(1,1,3))
-print(read_gama_1(2,35,1))
-print(read_gama_2(2,1))
-print(read_d(5))
+# -------------------------------------
+# Other functions as in your original code
+# -------------------------------------
+
+def sum_last(j, n, k):
+    total = 0
+    # index represents the origin country (l)
+    for index in range(1, N):  # assumes 1-based indexing for country indices
+        total += (read_alpha(j, n) *
+                  (one_plus_tao(k, n, index) - 1) *
+                  read_pi(k, n, index)) / one_plus_tao(k, n, index)
+    return total
+
+def big_i(a, b):
+    if a == b:
+        return 1
+    else:
+        return 0
+
+def item_3(n, i, j, k):
+    return big_i(n, i) * sum_last(j, n, k)
+
+def item_2(n, i, j, k):
+    return (read_pi(k, i, n) / one_plus_tao(k, i, n)) * (read_gama_1(j, k, n) + read_alpha(j, n) * read_gama_2(k, n))
+
+def item_1(n, i, j, k):
+    return big_i((j - 1) * N + n, (k - 1) * N + i)
+
+def m_entry(n, i, j, k):
+    return item_1(n, i, j, k) - item_2(n, i, j, k) - item_3(n, i, j, k)
+
+# -------------------------------------
+# Preallocate and fill matrix M using 0-based loops
+# -------------------------------------
+
+# We'll use 0-based loops here and add 1 to the indices when calling m_entry.
+M = np.zeros((J * N, J * N))
+
+def fill_m():
+    # Loop over sectors and countries in 0-based indexing.
+    for j in range(J):         # j = 0,1,...,J-1; sector = j+1
+        for n in range(N):     # n = 0,1,...,N-1; country = n+1
+            for k in range(J): # k = 0,1,...,J-1; sector = k+1
+                for i in range(N): # i = 0,1,...,N-1; country = i+1
+                    m_row = j * N + n
+                    m_col = k * N + i
+                    # Adjust indices to 1-based when calling m_entry and related functions
+                    M[m_row, m_col] = m_entry(n + 1, i + 1, j + 1, k + 1)
+    return M
+
+M_filled = fill_m()
+print(M_filled)
+
+def b_entry(j,n):
+    pass
+
+B = np.zeros((J * N, 1))
+def fill_b():
+    for j in range(J):
+        for n in range(N):
+            b_row = j * N + n
+    pass
+# print(read_pi(2, 3,  2))
+# print(one_plus_tao(2, 3,  2))
+# print(read_gama_1(1,2,2))
+# print(read_gama_2(2,2))
+# print(read_alpha(1,2))
+
+# Optionally, print or inspect a portion of M
+
+#
+# # Convert the NumPy array M to a DataFrame
+# M_df = pd.DataFrame(M_filled)
+#
+# # Export the DataFrame to a CSV file
+# M_df.to_csv('M.csv', index=False)
