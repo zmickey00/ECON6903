@@ -1,4 +1,3 @@
-#%%
 import pandas as pd
 import numpy as np
 from numpy.linalg import solve
@@ -15,12 +14,12 @@ gamma_va      = pd.read_csv('data/gamma_VA.csv')        # Expected columns: 'cou
 one_plus_tau  = pd.read_csv('data/one_plus_tau.csv')    # Expected columns: 'CountryOrigin', 'CountryDestination', 'sector', 'one_plus_tau'
 pi_df         = pd.read_csv('data/pi.csv')              # Expected columns: 'CountryOrigin', 'CountryDestination', 'sector', 'pi'
 va_world      = pd.read_csv('data/VA_World.csv')
-
+#Normalization
 world_va = va_world['VA_World'].iloc[0]   # Assuming a single value is provided
 deficits['Deficits'] = deficits['Deficits'] / world_va
 
-print(deficits)
-# Dimensions
+# print(va_world.columns)
+
 J = 40  # number of sectors (or whichever grouping you have)
 N = 31  # number of countries (or whichever grouping you have)
 
@@ -50,10 +49,6 @@ gamma_va_dict = { (row['sector'], row['country']): row['gamma_VA']
 # For deficits, key: country
 deficits_dict = { row['country']: row['Deficits'] for _, row in deficits.iterrows() }
 
-# -------------------------------------
-# Define lookup functions using dictionaries
-# -------------------------------------
-
 def read_alpha(sector, country):
     return alpha_dict[(sector, country)]
 
@@ -72,14 +67,14 @@ def read_gama_2(sector, country):
 def read_d(country):
     return deficits_dict[country]
 
-# -------------------------------------
-# Other functions as in your original code
-# -------------------------------------
 
+M = np.full((J * N + 1, J * N),20.0)
+
+print(M)
 def sum_last(j, n, k):
     total = 0
     # index represents the origin country (l)
-    for index in range(1, N+1):  # assumes 1-based indexing for country indices
+    for index in range(1, N):  # assumes 1-based indexing for country indices
         total += (read_alpha(j, n) *
                   (one_plus_tao(k, n, index) - 1) *
                   read_pi(k, n, index)) / one_plus_tao(k, n, index)
@@ -103,31 +98,52 @@ def item_1(n, i, j, k):
 def m_entry(n, i, j, k):
     return item_1(n, i, j, k) - item_2(n, i, j, k) - item_3(n, i, j, k)
 
-# -------------------------------------
-# Preallocate and fill matrix M using 0-based loops
-# -------------------------------------
-
-# We'll use 0-based loops here and add 1 to the indices when calling m_entry.
-M = np.full((J * N + 1, J * N),20.0)
-# M = np.zeros((J * N+1, J * N))
 
 def fill_m():
     # Loop over sectors and countries in 0-based indexing.
-    for j in range(J):         # j = 0,1,...,J-1; sector = j+1
-        for n in range(N):     # n = 0,1,...,N-1; country = n+1
-            for k in range(J): # k = 0,1,...,J-1; sector = k+1
-                for i in range(N): # i = 0,1,...,N-1; country = i+1
+    for j in range(J):  # j = 0,1,...,J-1; sector = j+1
+        for n in range(N):  # n = 0,1,...,N-1; country = n+1
+            for k in range(J):  # k = 0,1,...,J-1; sector = k+1
+                for i in range(N):  # i = 0,1,...,N-1; country = i+1
                     m_row = j * N + n
                     m_col = k * N + i
                     # Adjust indices to 1-based when calling m_entry and related functions
                     M[m_row, m_col] = m_entry(n + 1, i + 1, j + 1, k + 1)
     return M
-#%%
-M_filled = fill_m()
-print(M_filled)
-
 
 #%%
+fill_m()
+
+
+print(M)
+
+# def b_entry(j,n):
+#    pass
+
+
+# print(read_pi(2, 3,  2))
+# print(one_plus_tao(2, 3,  2))
+# print(read_gama_1(1,2,2))
+# print(read_gama_2(2,2))
+# print(read_alpha(1,2))
+# function b=fillb()
+#    for n =1:N
+#        for j =1:J
+#            b_index = (j - 1) * N + n;
+#            b(b_index)=alphaLookupNumeric(j,n)*deficitLookupNumeric(n);
+#        end
+#    end
+# end
+# Optionally, print or inspect a portion of M
+
+#
+# # Convert the NumPy array M to a DataFrame
+# M_df = pd.DataFrame(M_filled)
+#
+# # Export the DataFrame to a CSV file
+# M_df.to_csv('M.csv', index=False)
+
+
 B = np.zeros((J * N + 1, 1))
 
 
@@ -167,8 +183,8 @@ B[J * N, 0] = 1
 print(B)
 
 # %%
-M_reduced = np.delete(M, 1239, axis=0)
-B_reduced = np.delete(B, 1239, axis=0)
+M_reduced = np.delete(M, 1238, axis=0)
+B_reduced = np.delete(B, 1238, axis=0)
 
 print(M_reduced.shape)
 print(B_reduced.shape)
