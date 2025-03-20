@@ -166,9 +166,6 @@ def solve_initial_equilibrium_fixed_point():
     # Solve for X (in long form).
     X_vector = np.dot(inv(M_reduced), B_reduced)
 
-    # Check normalization.
-    if abs(np.sum(X_vector) - 1) > 1e-5:
-        print("Warning: Sum of X_vector is not normalized to 1.")
 
     # Convert the long vector X into a nested dictionary X[j][n]
     X = {j: {} for j in range(1, J + 1)}
@@ -199,7 +196,7 @@ def solve_initial_equilibrium_fixed_point():
 THETA = 4
 
 
-def counterfactual_experiment(case=1, epsilon=0.1, max_iter_outer=100, tol_outer=1e-6):
+def counterfactual_experiment(case=1, epsilon=0.1, max_iter_outer=200, tol_outer=1e-8):
     """
     Solve for the counterfactual equilibrium.
 
@@ -411,6 +408,6 @@ if __name__ == "__main__":
 
     # Task 2: Run a counterfactual experiment.
     # Change the argument case=... to try different counterfactual scenarios.
-    w_hat, X_new, pi_new = counterfactual_experiment(case=1)
+    w_hat, X_new, pi_new = counterfactual_experiment(case=2)
     print("\nTask 2 completed. Counterfactual wage changes w_hat:")
     print(w_hat)

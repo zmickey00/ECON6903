@@ -6,14 +6,14 @@ from numpy.linalg import solve
 # Step 0. Import Data Files
 # -------------------------------
 # Adjust file paths if your files are in a subfolder (e.g., 'data/')
-alpha         = pd.read_csv('data/alpha.csv')         # Expected columns: 'country', 'sector', 'alpha'
-countries_df  = pd.read_csv('data/CountryNames.csv')    # Expected columns: 'Country'
-deficits      = pd.read_csv('data/Deficits.csv')        # Expected columns: 'country', 'Deficits'
-gamma_io      = pd.read_csv('data/gamma_IO.csv')        # Expected columns: 'country', 'SectorOrigin', 'SectorDestination', 'gamma_IO'
-gamma_va      = pd.read_csv('data/gamma_VA.csv')        # Expected columns: 'country', 'sector', 'gamma_VA'
-one_plus_tau  = pd.read_csv('data/one_plus_tau.csv')    # Expected columns: 'CountryOrigin', 'CountryDestination', 'sector', 'one_plus_tau'
-pi_df         = pd.read_csv('data/pi.csv')              # Expected columns: 'CountryOrigin', 'CountryDestination', 'sector', 'pi'
-va_world      = pd.read_csv('data/VA_World.csv')
+alpha         = pd.read_csv('alpha.csv')         # Expected columns: 'country', 'sector', 'alpha'
+countries_df  = pd.read_csv('CountryNames.csv')    # Expected columns: 'Country'
+deficits      = pd.read_csv('Deficits.csv')        # Expected columns: 'country', 'Deficits'
+gamma_io      = pd.read_csv('gamma_IO.csv')        # Expected columns: 'country', 'SectorOrigin', 'SectorDestination', 'gamma_IO'
+gamma_va      = pd.read_csv('gamma_VA.csv')        # Expected columns: 'country', 'sector', 'gamma_VA'
+one_plus_tau  = pd.read_csv('one_plus_tau.csv')    # Expected columns: 'CountryOrigin', 'CountryDestination', 'sector', 'one_plus_tau'
+pi_df         = pd.read_csv('pi.csv')              # Expected columns: 'CountryOrigin', 'CountryDestination', 'sector', 'pi'
+va_world      = pd.read_csv('VA_World.csv')
 #Normalization
 world_va = va_world['VA_World'].iloc[0]   # Assuming a single value is provided
 deficits['Deficits'] = deficits['Deficits'] / world_va
